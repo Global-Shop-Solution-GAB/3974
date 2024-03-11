@@ -1,0 +1,74 @@
+Program.Sub.ScreenSU.Start
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'07/11/14
+'CODED BY SFF
+'LOAD MASTER  COMPANY SPECIFIC
+
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+V.Local.sRet.Declare(String)
+V.Local.sSql.Declare(String)
+V.Local.sJob.Declare(String)
+V.Local.sSuf.Declare(String)
+
+
+
+F.ODBC.Connection!conX.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+
+'pad passed po line# to 4 char for sql statement
+F.Intrinsic.String.RPad(V.Passed.009001,"0",4,V.Local.sRet)
+
+'check po lines to see if job is associated with PO
+F.Intrinsic.String.Concat("select JOB,SUFFIX from v_po_lines where purchase_order = '",V.Passed.009000,"' and record_no = '",V.local.sRet,"'",V.Local.sSql)
+F.ODBC.Connection!conX.OpenRecordsetRO("rst",V.Local.sSql)
+F.Intrinsic.Control.If(V.ODBC.conX!rst.EOF,<>,True)
+	V.Local.sJob.Set(V.ODBC.conX!rst.FieldValTrim!JOB)
+	V.Local.sSuf.Set(V.ODBC.conX!rst.FieldValLTrim!SUFFIX)
+	F.ODBC.conX!rst.Close
+'check to see if project is associated with job and po, if so then set BIN to project#
+	F.Intrinsic.String.Concat("select project from v_job_header where job = '",V.Local.sJob,"' and suffix = '",V.Local.sSuf,"'",V.Local.sSql)
+	F.ODBC.Connection!conX.OpenRecordsetRO("rst",V.Local.sSql)
+	F.Intrinsic.Control.If(V.ODBC.conX!rst.EOF,<>,True)
+'if project is associated to job and job associated to po then set BIN to project#
+		V.Passed.000062.Set(V.ODBC.conX!rst.FieldValTrim!project)
+		F.ODBC.conX!rst.Close
+	F.Intrinsic.Control.Else
+		F.ODBC.conX!rst.Close
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Else
+	F.ODBC.conX!rst.Close
+F.Intrinsic.Control.Endif
+
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_3974_PROJ_BIN.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.Main.End
+
+Program.Sub.Comments.Start
+${$0$}$GCG_PROJ_BIN$}$SFF$}$7/11/2014
+${$1$}$$}$$}$0$}$16400$}$Populate Hook$}$5/10/2016 1:36:40 PM$}$(Program: PUR103; Screen: PUS103L)
+
+${$3$}$0$}$$}$-1$}$-1$}$$}$1/1/1900$}$Menu Item: Shipping & Receiving>Transactions>PO Receipts (Purchasing>Transactions>PO Receipts) > Lot/Ser
+
+When user opens the selection screen for "Lot/Bin", check to see if selected PO Line has a work order associated to it. If it does, check the work order to see if it has a project associated to it. If it does, set the "Bin" field to the project number.
+
+
+Program.Sub.Comments.End
+
